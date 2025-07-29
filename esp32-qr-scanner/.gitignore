@@ -1,0 +1,46 @@
+# ESP-IDF build artifacts
+build/
+sdkconfig
+sdkconfig.old
+managed_components/
+
+# Dependencies
+dependencies.lock
+.managed_components/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Temporary files
+*.tmp
+*.temp
+/tmp/
+
+# Compiled binaries
+*.bin
+*.elf
+*.map
+
+# Documentation build
+docs/html/
+docs/latex/
+
+# Test artifacts
+test/__pycache__/
+test/*.pyc
+test/results/
+
+# Local configuration
+local_config.h
+secrets.h
