@@ -14,6 +14,7 @@
 #include "camera_manager.hpp"
 #include <cstring>
 #include <cmath>
+#include <sys/time.h>
 #include "esp_log.h"
 #include "esp_timer.h"
 #include "esp_heap_caps.h"
@@ -40,7 +41,167 @@
 #define CAM_PIN_HREF    23
 #define CAM_PIN_PCLK    22
 
+// Camera frame buffer location
+#define CAMERA_FB_IN_PSRAM 0
+#define CAMERA_FB_IN_DRAM  1
+
+// LEDC definitions
+#define LEDC_TIMER_0 0
+#define LEDC_CHANNEL_0 0
+
 static const char *TAG = "CAMERA_MANAGER";
+
+// Simulated camera state
+static bool camera_hw_initialized = false;
+static camera_config_t current_camera_config;
+static sensor_t camera_sensor;
+static camera_fb_t simulated_frame_buffer;
+static uint8_t *simulated_image_data = nullptr;
+
+// Camera simulation functions
+esp_err_t esp_camera_init(const camera_config_t *config)
+{
+    if (camera_hw_initialized) {
+        ESP_LOGW(TAG, "Camera already initialized");
+        return ESP_OK;
+    }
+    
+    ESP_LOGI(TAG, "Initializing camera hardware (simulated)");
+    
+    if (!config) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    
+    // Copy configuration
+    memcpy(&current_camera_config, config, sizeof(camera_config_t));
+    
+    // Allocate simulated image buffer
+    size_t image_size = 640 * 480; // VGA grayscale
+    simulated_image_data = (uint8_t*)heap_caps_malloc(image_size, MALLOC_CAP_SPIRAM);
+    if (!simulated_image_data) {
+        ESP_LOGE(TAG, "Failed to allocate camera buffer");
+        return ESP_ERR_NO_MEM;
+    }
+    
+    // Initialize simulated frame buffer
+    simulated_frame_buffer.buf = simulated_image_data;
+    simulated_frame_buffer.len = image_size;
+    simulated_frame_buffer.width = 640;
+    simulated_frame_buffer.height = 480;
+    simulated_frame_buffer.format = config->pixel_format;
+    
+    // Fill with test pattern
+    for (size_t i = 0; i < image_size; i++) {
+        simulated_image_data[i] = (uint8_t)((i * 131) % 256); // Pseudo-random pattern
+    }
+    
+    // Initialize sensor control functions
+    camera_sensor.set_brightness = [](void *sensor, int level) -> int { 
+        ESP_LOGD(TAG, "Set brightness: %d", level); 
+        return 0; 
+    };
+    camera_sensor.set_contrast = [](void *sensor, int level) -> int { 
+        ESP_LOGD(TAG, "Set contrast: %d", level); 
+        return 0; 
+    };
+    camera_sensor.set_saturation = [](void *sensor, int level) -> int { 
+        ESP_LOGD(TAG, "Set saturation: %d", level); 
+        return 0; 
+    };
+    camera_sensor.set_special_effect = [](void *sensor, int effect) -> int { 
+        ESP_LOGD(TAG, "Set special effect: %d", effect); 
+        return 0; 
+    };
+    camera_sensor.set_whitebal = [](void *sensor, int enable) -> int { 
+        ESP_LOGD(TAG, "Set white balance: %d", enable); 
+        return 0; 
+    };
+    camera_sensor.set_awb_gain = [](void *sensor, int enable) -> int { 
+        ESP_LOGD(TAG, "Set AWB gain: %d", enable); 
+        return 0; 
+    };
+    camera_sensor.set_gain_ctrl = [](void *sensor, int enable) -> int { 
+        ESP_LOGD(TAG, "Set gain control: %d", enable); 
+        return 0; 
+    };
+    camera_sensor.set_exposure_ctrl = [](void *sensor, int enable) -> int { 
+        ESP_LOGD(TAG, "Set exposure control: %d", enable); 
+        return 0; 
+    };
+    camera_sensor.set_hmirror = [](void *sensor, int enable) -> int { 
+        ESP_LOGD(TAG, "Set horizontal mirror: %d", enable); 
+        return 0; 
+    };
+    camera_sensor.set_vflip = [](void *sensor, int enable) -> int { 
+        ESP_LOGD(TAG, "Set vertical flip: %d", enable); 
+        return 0; 
+    };
+    camera_sensor.set_aec2 = [](void *sensor, int enable) -> int { 
+        ESP_LOGD(TAG, "Set AEC2: %d", enable); 
+        return 0; 
+    };
+    camera_sensor.set_agc_gain = [](void *sensor, int gain) -> int { 
+        ESP_LOGD(TAG, "Set AGC gain: %d", gain); 
+        camera_sensor.status.agc_gain = gain;
+        return 0; 
+    };
+    camera_sensor.set_sharpness = [](void *sensor, int level) -> int { 
+        ESP_LOGD(TAG, "Set sharpness: %d", level); 
+        return 0; 
+    };
+    camera_sensor.set_denoise = [](void *sensor, int level) -> int { 
+        ESP_LOGD(TAG, "Set denoise: %d", level); 
+        return 0; 
+    };
+    
+    camera_sensor.status.agc_gain = 0;
+    
+    camera_hw_initialized = true;
+    ESP_LOGI(TAG, "Camera hardware initialized (simulated)");
+    
+    return ESP_OK;
+}
+
+camera_fb_t *esp_camera_fb_get(void)
+{
+    if (!camera_hw_initialized) {
+        ESP_LOGE(TAG, "Camera not initialized");
+        return nullptr;
+    }
+    
+    // Update timestamp
+    gettimeofday(&simulated_frame_buffer.timestamp, nullptr);
+    
+    // Simulate slight changes in the image
+    static uint32_t frame_counter = 0;
+    frame_counter++;
+    
+    // Add some variation to simulate real camera data
+    size_t offset = (frame_counter * 127) % simulated_frame_buffer.len;
+    if (offset < simulated_frame_buffer.len) {
+        simulated_image_data[offset] = (uint8_t)((frame_counter * 73) % 256);
+    }
+    
+    ESP_LOGD(TAG, "Frame captured: %dx%d, %zu bytes", 
+             simulated_frame_buffer.width, simulated_frame_buffer.height, simulated_frame_buffer.len);
+    
+    return &simulated_frame_buffer;
+}
+
+void esp_camera_fb_return(camera_fb_t *fb)
+{
+    // In real implementation, this would return the frame buffer to the pool
+    ESP_LOGD(TAG, "Frame buffer returned");
+}
+
+sensor_t *esp_camera_sensor_get(void)
+{
+    if (!camera_hw_initialized) {
+        return nullptr;
+    }
+    
+    return &camera_sensor;
+}
 
 // Camera manager state
 static bool camera_initialized = false;

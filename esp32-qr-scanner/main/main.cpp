@@ -350,7 +350,7 @@ extern "C" void app_main(void)
  * @brief Get system uptime in seconds
  * @return System uptime in seconds
  */
-uint32_t app_get_uptime_seconds(void)
+extern "C" uint32_t app_get_uptime_seconds(void)
 {
     return system_uptime_seconds;
 }
@@ -359,7 +359,7 @@ uint32_t app_get_uptime_seconds(void)
  * @brief Get number of QR codes processed
  * @return Number of QR codes processed since startup
  */
-uint32_t app_get_qr_codes_processed(void)
+extern "C" uint32_t app_get_qr_codes_processed(void)
 {
     return qr_codes_processed;
 }
@@ -367,7 +367,7 @@ uint32_t app_get_qr_codes_processed(void)
 /**
  * @brief Increment QR code counter (called by QR detector)
  */
-void app_increment_qr_counter(void)
+extern "C" void app_increment_qr_counter(void)
 {
     qr_codes_processed++;
 }
@@ -376,7 +376,7 @@ void app_increment_qr_counter(void)
  * @brief Check if system is fully initialized
  * @return true if system is initialized, false otherwise
  */
-bool app_is_system_initialized(void)
+extern "C" bool app_is_system_initialized(void)
 {
     return system_initialized;
 }

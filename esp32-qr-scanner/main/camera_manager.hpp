@@ -21,7 +21,101 @@
 #include "freertos/task.h"
 #include "freertos/queue.h"
 #include "freertos/semphr.h"
-#include "esp_camera.h"
+// Camera hardware interface (would be esp_camera.h in real implementation)
+typedef enum {
+    PIXFORMAT_RGB565,
+    PIXFORMAT_YUV422,
+    PIXFORMAT_GRAYSCALE,
+    PIXFORMAT_JPEG,
+    PIXFORMAT_RGB888,
+} pixformat_t;
+
+typedef enum {
+    FRAMESIZE_96X96,
+    FRAMESIZE_QQVGA,
+    FRAMESIZE_QCIF,
+    FRAMESIZE_HQVGA,
+    FRAMESIZE_240X240,
+    FRAMESIZE_QVGA,
+    FRAMESIZE_CIF,
+    FRAMESIZE_HVGA,
+    FRAMESIZE_VGA,
+    FRAMESIZE_SVGA,
+    FRAMESIZE_XGA,
+    FRAMESIZE_HD,
+    FRAMESIZE_SXGA,
+    FRAMESIZE_UXGA,
+} framesize_t;
+
+typedef enum {
+    CAMERA_GRAB_WHEN_EMPTY,
+    CAMERA_GRAB_LATEST,
+} camera_grab_mode_t;
+
+typedef struct {
+    uint8_t *buf;
+    size_t len;
+    size_t width;
+    size_t height;
+    pixformat_t format;
+    struct timeval timestamp;
+} camera_fb_t;
+
+// Camera initialization structure
+typedef struct {
+    int pin_pwdn;
+    int pin_reset;
+    int pin_xclk;
+    int pin_sccb_sda;
+    int pin_sccb_scl;
+    int pin_d7;
+    int pin_d6;
+    int pin_d5;
+    int pin_d4;
+    int pin_d3;
+    int pin_d2;
+    int pin_d1;
+    int pin_d0;
+    int pin_vsync;
+    int pin_href;
+    int pin_pclk;
+    int xclk_freq_hz;
+    int ledc_timer;
+    int ledc_channel;
+    pixformat_t pixel_format;
+    framesize_t frame_size;
+    int jpeg_quality;
+    int fb_count;
+    int fb_location;
+    camera_grab_mode_t grab_mode;
+} camera_config_t;
+
+// Sensor control structure
+typedef struct {
+    int (*set_brightness)(void *sensor, int level);
+    int (*set_contrast)(void *sensor, int level);
+    int (*set_saturation)(void *sensor, int level);
+    int (*set_special_effect)(void *sensor, int effect);
+    int (*set_whitebal)(void *sensor, int enable);
+    int (*set_awb_gain)(void *sensor, int enable);
+    int (*set_gain_ctrl)(void *sensor, int enable);
+    int (*set_exposure_ctrl)(void *sensor, int enable);
+    int (*set_hmirror)(void *sensor, int enable);
+    int (*set_vflip)(void *sensor, int enable);
+    int (*set_aec2)(void *sensor, int enable);
+    int (*set_agc_gain)(void *sensor, int gain);
+    int (*set_sharpness)(void *sensor, int level);
+    int (*set_denoise)(void *sensor, int level);
+    struct {
+        int agc_gain;
+    } status;
+} sensor_t;
+
+// Function prototypes for camera simulation
+esp_err_t esp_camera_init(const camera_config_t *config);
+camera_fb_t *esp_camera_fb_get(void);
+void esp_camera_fb_return(camera_fb_t *fb);
+sensor_t *esp_camera_sensor_get(void);
 
 #ifdef __cplusplus
 extern "C" {
